@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include<stdlib.h>
+#include<string.h>
 #include "encode.h"
 #include "types.h"
 
@@ -11,14 +13,22 @@ int main(int argc,char *argv[])
     */
         /*
             -> call read &validate_encode_argv(argv,&encInfo)==e_success
-                -> call do_encoding(&encInfo)
+                -> call do_encoding(&encInfo)==e_success
+                    print "Encoding is Success"
+
         */
+    if(argc<3)
+    {
+        printf("Invalid Input\n");
+        return e_failure;
+    }
     if(check_operation_type(argv[1][1])==e_encode)
     {
         if(read_and_validate_encode_args(argv,&encInfo)==e_success)
         {
             if(do_encoding(&encInfo)==e_success)
             {
+                printf("Encoding is success\n");
 
             }
         }
