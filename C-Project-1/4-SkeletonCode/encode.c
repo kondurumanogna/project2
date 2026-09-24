@@ -39,6 +39,7 @@ uint get_image_size_for_bmp(FILE *fptr_image)
  * Output: FILE pointer for above files
  * Return Value: e_success or e_failure, on file errors
  */
+/*
 Status open_files(EncodeInfo *encInfo)
 {
     // Src Image file
@@ -77,6 +78,7 @@ Status open_files(EncodeInfo *encInfo)
     // No failure return e_success
     return e_success;
 }
+*/
 
 Status read_and_validate_encode_args(char *argv[], EncodeInfo *encInfo)
 {
@@ -154,7 +156,7 @@ Status read_and_validate_encode_args(char *argv[], EncodeInfo *encInfo)
             printf("Entered INVALID EXTENSION FILE!!\nCheck file extension!! Write one m in extension\n");            
             return e_failure;
         }
-        if(argv[4][len-1]=='p')
+        if(argv[4][len-1]!='p')
         {
             printf("Entered INVALID EXTENSION FILE!!\nCheck file extension!! Write one p in extension\n");
             return e_failure;
@@ -167,13 +169,14 @@ Status read_and_validate_encode_args(char *argv[], EncodeInfo *encInfo)
 
     if(open_files(encInfo)==e_failure)
     {
+        printf("Error while opening files\n");
         return e_failure;
     }
 
     return e_success;
     
 }
-/*  Status open_files(EncodeInfo *encInfo)
+ Status open_files(EncodeInfo *encInfo)
 {
     /*
         ->open 'encInfo->src_image_fname' file in read mode fread
@@ -190,6 +193,36 @@ Status read_and_validate_encode_args(char *argv[], EncodeInfo *encInfo)
         -> return e_success;
     
     */
+
+    // Open source image
+    encInfo->fptr_src_image = fopen(encInfo->src_image_fname, "rb");
+
+    if (encInfo->fptr_src_image == NULL)
+    {
+        printf("Error: Unable to open source image\n");
+        return e_failure;
+    }
+
+    // Open secret file
+    encInfo->fptr_secret = fopen(encInfo->secret_fname, "rb");
+
+    if (encInfo->fptr_secret == NULL)
+    {
+        printf("Error: Unable to open secret file\n");
+        return e_failure;
+    }
+
+    // Open stego image
+    encInfo->fptr_stego_image = fopen(encInfo->stego_image_fname, "wb");
+
+    if (encInfo->fptr_stego_image == NULL)
+    {
+        printf("Error: Unable to create stego image\n");
+        return e_failure;
+    }
+
+    return e_success;
+}
 Status do_encoding(EncodeInfo *encInfo)
 {
     /*
@@ -339,7 +372,7 @@ Status encode_magic_string(const char *magic_string, EncodeInfo *encInfo)
         //read 8 bytes
         fread(buffer,1,8,encInfo->fptr_src_image);
     
-        encode_byte_to_lsb(MAGIC_STRING[1],buffer);
+        encode_byte_to_lsb(MAGIC_STRING[i],buffer);
         fwrite(buffer,1,8,encInfo->fptr_stego_image);
     }
     free(buffer);
@@ -392,6 +425,7 @@ Status encode_secret_file_extn_size(EncodeInfo *encInfo)
     fread(buffer,1,32,encInfo->fptr_src_image);
     if(encode_size_to_lsb(strlen(encInfo->extn_secret_file),buffer)==e_failure)
     {
+        free(buffer);
         return e_failure;
     }
     fwrite(buffer,1,32,encInfo->fptr_stego_image);
