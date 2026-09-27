@@ -9,6 +9,15 @@ int main(int argc,char *argv[])
 {
     EncodeInfo encInfo;
     
+    if(argc<2)
+    {
+        printf("Invalid Input\n");
+        printf("Main Help Menu:\n");
+        printf("./a.out -e <source.bmp> <secret.txt> [output.bmp]\n");
+        printf("./a.out -d <stego.bmp> [output_file]\n");
+        return e_failure;
+    }
+
     /*
        -> call check_operation_type(argv[1][1])==e_encode
     */
@@ -31,7 +40,8 @@ int main(int argc,char *argv[])
     {
         if(argc<4)
         {
-            printf("Invalid Input\n");
+            printf("Encoding Help Menu:\n");
+            printf("./a.out -e <source.bmp> <secret.txt> [output.bmp]\n");
             return e_failure;
         }
         if(read_and_validate_encode_args(argv,&encInfo)==e_success)
@@ -52,7 +62,8 @@ int main(int argc,char *argv[])
     {
         if(argc<3)
         {
-            printf("Invalid Input\n");
+            printf("Decoding Help Menu:\n");
+            printf("Usage : ./a.out -d <stego.bmp> [output_file]\n");
             return e_failure;
         }
         if(validate_decode_args(argv,&encInfo)==e_success)
@@ -70,6 +81,10 @@ int main(int argc,char *argv[])
     else
     {
         printf("Invalid operation type\n");
+        printf("Usage:\n");
+        printf("./a.out -e <source.bmp> <secret.txt> [output.bmp]\n");
+        printf("./a.out -d <stego.bmp> [output_file]\n");
+
     }
 
     return 0;

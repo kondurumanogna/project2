@@ -105,6 +105,11 @@ Status read_and_validate_encode_args(char *argv[], EncodeInfo *encInfo)
 
     //validating source file extension!! 
     int len=strlen(argv[2]);
+    if(len<4)
+    {
+        printf("Entered INVALID EXTENSION FILE\n");
+        return e_failure;
+    }
     if(argv[2][len-4]!='.')
     {
         printf("Entered INVALID EXTENSION FILE!!\nCheck file extension character!!Look for '.' at len-4\n");
@@ -307,9 +312,9 @@ Status check_capacity(EncodeInfo *encInfo)
 
     */
     uint image_capacity=get_image_size_for_bmp(encInfo->fptr_src_image);
-    uint size_secret_file=get_file_size(encInfo->fptr_secret);
+    encInfo->size_secret_file=get_file_size(encInfo->fptr_secret);
 
-    if(((14+size_secret_file)*8)>image_capacity)
+    if(((14+encInfo->size_secret_file)*8)>image_capacity)
     {
         return e_failure;
     }
@@ -418,6 +423,11 @@ Status encode_secret_file_extn_size(EncodeInfo *encInfo)
     
     */
     char *dot=strchr(encInfo->secret_fname,'.');
+    if(dot==NULL)
+    {
+        printf("Invalid secret file Extension\n");
+        return e_failure;
+    }
     strcpy(encInfo->extn_secret_file,dot);
 
     char *buffer=malloc(32*sizeof(char));
@@ -475,6 +485,10 @@ Status encode_secret_file_extn(const char *file_extn, EncodeInfo *encInfo)
         return e_success
     */
     char *buffer=malloc(8*sizeof(char));
+    if(buffer==NULL)
+    {
+        return e_failure;
+    }
     for(int i=0;i<strlen(file_extn);i++)
     {
         fread(buffer,1,8,encInfo->fptr_src_image);   
@@ -501,6 +515,10 @@ Status encode_secret_file_size(long file_size, EncodeInfo *encInfo)
     */
 
     char *buffer=malloc(32*sizeof(char));
+    if(buffer==NULL)
+    {
+        return e_failure;
+    }
     fread(buffer,1,32,encInfo->fptr_src_image);  
     encode_size_to_lsb(file_size,buffer);
     fwrite(buffer,1,32,encInfo->fptr_stego_image);
@@ -521,6 +539,11 @@ Status encode_secret_file_data(EncodeInfo *encInfo)
         ->encode_byte_to_lsb(data,buff)
     */
    char *buffer=malloc(8*sizeof(char));
+   if (buffer==NULL)
+   {
+        return e_failure;
+   }
+   
    char data;
 
    fseek(encInfo->fptr_secret,0,SEEK_SET);
@@ -549,7 +572,10 @@ Status copy_remaining_img_data(FILE *fptr_src, FILE *fptr_dest)
 
     while(fread(&data,1,1,fptr_src)>0)
     {
-        fwrite(&data,1,1,fptr_dest);
+        if(fwrite(&data,1,1,fptr_dest)!=1)
+        {
+            return e_failure;
+        }
     }
     return e_success;
 }

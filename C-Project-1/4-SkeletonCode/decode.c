@@ -9,27 +9,55 @@
 
 Status validate_decode_args(char *argv[], EncodeInfo *encInfo)
 {
-
-    if(strcmp(argv[2],"output.bmp")!=0)
+    int len=strlen(argv[2]);
+    if(len<4)
     {
-        printf("Invalid Input\n");
+        printf("Entered INVALID EXTENSION FILE\n");
         return e_failure;
     }
-    else
+    if(argv[2][len-4]!='.')
     {
-        encInfo->stego_image_fname=argv[2];
+        printf("Entered INVALID EXTENSION FILE!!\nCheck file extension character!!Look for '.' at len-4\n");
+        return e_failure;
     }
+    if(argv[2][len-3]!='b')
+    {
+        printf("Entered INVALID EXTENSION FILE!!\nCheck file extension!! Write bmp extension\n");        
+        return e_failure;
+    }
+    if(argv[2][len-2]!='m')
+    {
+        printf("Entered INVALID EXTENSION FILE!!\nCheck file extension!! Write one m in extension\n");            
+        return e_failure;
+    }
+    if(argv[2][len-1]!='p')
+    {
+        printf("Entered INVALID EXTENSION FILE!!\nCheck file extension!! Write one p in extension\n");
+        return e_failure;
+    }
+
+    encInfo->stego_image_fname=argv[2];
 
    if(argv[3] == NULL)
     {
-         encInfo->secret_fname = malloc(100);
+        encInfo->secret_fname = malloc(100);
+        if(encInfo->secret_fname==NULL)
+        {
+            printf("Error : Memory allocation failed\n");
+            return e_failure;
+        }
          strcpy(encInfo->secret_fname, "decoded");
     }
     else
-{
-    encInfo->secret_fname = malloc(100);
-    strcpy(encInfo->secret_fname, argv[3]);
-}
+    {
+        encInfo->secret_fname = malloc(100);
+        if(encInfo->secret_fname==NULL)
+        {
+            printf("Error : Memory allocation failed\n");
+            return e_failure;
+        }
+        strcpy(encInfo->secret_fname, argv[3]);
+    }
     return e_success;
 
 }
@@ -94,6 +122,31 @@ Status do_decoding(EncodeInfo *encInfo)
         printf("Error while decoding secret file extension\n");
         return e_failure;
     }
+
+    int len=strlen(encInfo->secret_fname);
+    char *dot=strrchr(encInfo->secret_fname,'.');
+    if(dot!=NULL)
+    {
+        len=dot-encInfo->secret_fname;
+    }
+    if(len+encInfo->extn_secret_file_size>=100)
+    {
+        printf("Error : Output filename is too long\n");
+        return e_failure;
+    }
+    for(int i=0;i<encInfo->extn_secret_file_size;i++)
+    {
+        encInfo->secret_fname[len+i]=encInfo->extn_secret_file[i];
+    }
+    encInfo->secret_fname[len+encInfo->extn_secret_file_size]='\0';
+    
+    encInfo->fptr_secret=fopen(encInfo->secret_fname,"wb");
+    if(encInfo->fptr_secret==NULL)
+    {
+        printf("Error while creating secret file\n");
+        return e_failure;
+    }
+
     if(decode_secret_file_size(encInfo)==e_failure)
     {      
         printf("Error while decoding secret file size\n");
@@ -125,6 +178,7 @@ Status open_files_decoding(EncodeInfo *encInfo)
         return e_failure;
     }
     
+    /*
     encInfo->fptr_secret =fopen(encInfo->secret_fname, "wb");
 
     if(encInfo->fptr_secret == NULL)
@@ -132,6 +186,7 @@ Status open_files_decoding(EncodeInfo *encInfo)
         printf("Error while opening secret file\n");
         return e_failure;
     }
+    */
      return e_success;
 }
 
@@ -149,18 +204,30 @@ Status decode_magic_string(char *magic_string_decode, EncodeInfo *encInfo)
     */
 
     char *buffer=malloc(8*sizeof(char));
+    if(buffer==NULL)
+    {
+        printf("Error : Memory allocation failed\n");
+        return e_failure;
+    }
     fseek(encInfo->fptr_stego_image, 54, SEEK_SET);
     for(int i=0;i<strlen(MAGIC_STRING);i++)
     {
         
-        fread(buffer,1,8,encInfo->fptr_stego_image);
+        if(fread(buffer,1,8,encInfo->fptr_stego_image)!=8)
+        {
+            printf("Error while reading magic_string from stego image\n");
+            free(buffer);
+            return e_failure;
+        }
         if(decode_byte_from_lsb(buffer,&magic_string_decode[i])==e_failure)
         {
             printf("Error while decoding magic string\n");
+            free(buffer);
             return e_failure;
         }
     }
     magic_string_decode[strlen(MAGIC_STRING)] = '\0';
+
     free(buffer);
     return e_success;
 }
@@ -194,10 +261,27 @@ Status decode_secret_file_extn_size(EncodeInfo *encInfo)
         return e_success
     */
     char *buffer=malloc(32*sizeof(char));
-    fread(buffer,1,32,encInfo->fptr_stego_image);
+    if(buffer==NULL)
+    {
+        printf("Error : Memory allocation failed\n");
+        return e_failure;
+    }
+    if(fread(buffer,1,32,encInfo->fptr_stego_image)!=32)
+    {
+        printf("Error while reading secret file extension size\n");
+        free(buffer);
+        return e_failure;
+    }
     if(decode_size_from_lsb(&encInfo->extn_secret_file_size,buffer)==e_failure)
     {
         printf("Error while decoding secret file extension size\n");
+        free(buffer);
+        return e_failure;
+    }
+    if(encInfo->extn_secret_file_size<0 ||encInfo->extn_secret_file_size>MAX_FILE_SUFFIX)
+    {
+        printf("Error : Invalid secret file extension size\n");
+        free(buffer);
         return e_failure;
     }
     free(buffer);
@@ -213,16 +297,26 @@ Status decode_secret_file_extn(EncodeInfo *encInfo)
                 ->if not e_success,print error msg,return e_failure
                 */
     char *buffer=malloc(8*sizeof(char));
+    if(buffer==NULL)
+    {
+        printf("Error : Memory allocation failed\n");
+        return e_failure;
+    }
     for(int i=0;i<encInfo->extn_secret_file_size;i++)
     {
-        fread(buffer,1,8,encInfo->fptr_stego_image);
+        if(fread(buffer,1,8,encInfo->fptr_stego_image)!=8)
+        {
+            printf("Error while reading secret file extension\n");
+            free(buffer);
+            return e_failure;
+        }
         if(decode_byte_from_lsb(buffer,&encInfo->extn_secret_file[i])==e_failure)
         {
             printf("Error while decoding secret file extension\n");
+            free(buffer);
             return e_failure;
         }
     }
-    encInfo->extn_secret_file[encInfo->extn_secret_file_size] = '\0';
     free(buffer);
     return e_success;
 }
@@ -237,10 +331,21 @@ Status decode_secret_file_size( EncodeInfo *encInfo)
         return e_success
     */
     char *buffer=malloc(32*sizeof(char));
-    fread(buffer,1,32,encInfo->fptr_stego_image);
+    if(buffer==NULL)
+    {
+        printf("Error : Memory allocation failed\n");
+        return e_failure;
+    }
+    if(fread(buffer,1,32,encInfo->fptr_stego_image)!=32)
+    {
+        printf("Error while reading secret file size\n");
+        free(buffer);
+        return e_failure;
+    }
     if(decode_size_from_lsb(&encInfo->size_secret_file,buffer)==e_failure)
     {
         printf("Error while decoding secret file size\n");
+        free(buffer);
         return e_failure;
     }
     free(buffer);
@@ -258,10 +363,27 @@ Status decode_secret_file_data(EncodeInfo *encInfo)
         return e_success
     */
     char *buffer=malloc(8*sizeof(char));
+    if(buffer==NULL)
+    {
+        printf("Error : Memory allocation failed\n");
+        return e_failure;
+    }
     char *data=malloc(encInfo->size_secret_file*sizeof(char));
+    if(data==NULL)
+    {
+        printf("Error : Memory allocation failed\n");
+        free(buffer);
+        return e_failure;
+    }
     for(int i=0;i<encInfo->size_secret_file;i++)
     {
-        fread(buffer,1,8,encInfo->fptr_stego_image);
+        if(fread(buffer,1,8,encInfo->fptr_stego_image)!=8)
+        {
+            printf("Error while reading secret file data\n");
+            free(buffer);
+            free(data);
+            return e_failure;
+        }
         if(decode_byte_from_lsb(buffer,&data[i])==e_failure)
         {
             printf("Error while decoding secret file data\n");
@@ -270,7 +392,13 @@ Status decode_secret_file_data(EncodeInfo *encInfo)
             return e_failure;
         }
     }
-    fwrite(data,1,encInfo->size_secret_file,encInfo->fptr_secret);
+    if(fwrite(data,1,encInfo->size_secret_file,encInfo->fptr_secret)!=encInfo->size_secret_file)
+    {
+        printf("Error while writing decoded secret file\n");
+        free(buffer);
+        free(data);
+        return e_failure;
+    }
     free(buffer);
     free(data);
     return e_success;
